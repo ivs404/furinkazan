@@ -16,9 +16,22 @@ bot = telegram.Bot(token=BOT_TOKEN)
 # Настройка Instaloader
 L = instaloader.Instaloader()
 
-# Укажите Instagram аккаунт
+# Ваши учетные данные Instagram
+instagram_username = 'martin_06_10_24'  # Замените на ваш логин
+instagram_password = 'g8bRncEvHdxfMKY'  # Замените на ваш пароль
+
+# Вход в Instagram
+L.login(instagram_username, instagram_password)
+
+# Укажите Instagram аккаунт, из которого нужно загружать видео
 username = "tvoretzz"
-profile = instaloader.Profile.from_username(L.context, username)
+
+# Получаем профиль
+try:
+    profile = instaloader.Profile.from_username(L.context, username)
+except instaloader.exceptions.ProfileNotExistsException:
+    logger.error(f'Профиль "{username}" не существует.')
+    exit()
 
 # Загрузка новых видео
 def download_and_send_videos():
