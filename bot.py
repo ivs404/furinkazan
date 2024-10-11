@@ -2,53 +2,39 @@ import instaloader
 import telegram
 import logging
 import os
-from time import sleep
 
-# Логирование
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 # Настройки Telegram
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # Получите токен через @BotFather
 CHANNEL_ID = os.getenv("CHANNEL_ID")  # ID вашего Telegram-канала
+
 bot = telegram.Bot(token=BOT_TOKEN)
 
 # Настройка Instaloader
 L = instaloader.Instaloader()
 
-# Укажите Instagram аккаунт для отслеживания
-ACCOUNT_NAME = 'tvoretzz'
+# Укажите Instagram аккаунт
+username = "tvoretzz"
+profile = instaloader.Profile.from_username(L.context, username)
 
-# Хранение последнего обработанного поста
-last_post_id_file = 'last_post_id.txt'
+# Загрузка новых видео
+def download_and_send_videos():
+    for post in profile.get_posts():
+        if post.typename == 'GraphVideo':
+            # Загрузить видео
+            video_url = post.video_url
+            video_filename = f"{post.mediaid}.mp4"
+            L.download_post(post, target=video_filename)
 
-def get_last_post_id():
-    try:
-        with open(last_post_id_file, 'r') as file:
-            return file.read().strip()
-    except FileNotFoundError:
-        return None
+            # Отправить видео в Telegram
+            with open(video_filename, 'rb') as video_file:
+                bot.send_video(chat_id=CHANNEL_ID, video=video_file, caption=post.caption)
 
-def save_last_post_id(post_id):
-    with open(last_post_id_file, 'w') as file:
-        file.write(post_id)
+            # Удалить файл после отправки
+            os.remove(video_filename)
 
-def send_video_to_telegram(video_url):
-    bot.send_message(chat_id=CHANNEL_ID, text=video_url)
-
-# Главный цикл для проверки новых постов
-while True:
-    profile = instaloader.Profile.from_username(L.context, ACCOUNT_NAME)
-    latest_post = next(profile.get_posts())
-
-    # Получение ID последнего поста
-    last_post_id = get_last_post_id()
-
-    # Если это новый пост, отправляем его в Telegram
-    if last_post_id != latest_post.shortcode:
-        video_url = f"https://www.instagram.com/p/{latest_post.shortcode}/"
-        send_video_to_telegram(video_url)
-        save_last_post_id(latest_post.shortcode)
-        logger.info(f"New video sent to Telegram: {video_url}")
-
-    sleep(300)  # Пауза в 5 минут перед следующей проверкой
+if __name__ == "__main__":
+    download_and_send_videos()
